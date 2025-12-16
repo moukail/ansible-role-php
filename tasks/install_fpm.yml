@@ -1,0 +1,126 @@
+---
+- name: Set facts for PHP FPM
+  ansible.builtin.set_fact:
+    php_fpm_sock: /var/run/php{{ php_sufix }}-fpm.sock
+    php_fpm_pid: /var/run/php{{ php_sufix }}-fpm.pid
+
+- name: Configuring PHP FPM source with custom modules
+  ansible.builtin.command: >
+    ./configure
+    --sysconfdir={{ php_path }}/fpm
+    --with-config-file-path={{ php_path }}/fpm
+    --with-config-file-scan-dir={{ php_path }}/fpm/conf.d
+    --disable-cgi
+    --disable-cli
+    --enable-fpm
+    --with-fpm-user={{ user }}
+    --with-fpm-group={{ user }}
+    {{ php_custom_modules }}
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: Build PHP FPM {{ php_version }}
+  ansible.builtin.shell: make -j$(nproc)
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: Install PHP FPM {{ php_version }}
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: Make copy of php-fpm file
+  ansible.builtin.copy:
+    src: /usr/sbin/php-fpm
+    dest: /usr/sbin/php{{ php_sufix }}-fpm
+    remote_src: true
+    mode: '0755'
+
+- name: Make php-fpm symlink
+  ansible.builtin.file:
+    src: /usr/sbin/php{{ php_sufix }}-fpm
+    dest: /usr/sbin/php-fpm
+    state: link
+    force: true
+
+- name: Copy PHP FPM ini
+  ansible.builtin.copy:
+    src: "{{ build_dir }}/php.ini-production"
+    dest: "{{ php_path }}/fpm/php.ini"
+    remote_src: true
+    mode: '0755'
+
+- name: Create dirs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+  loop:
+    - "/var/run/php"
+    - "{{ php_path }}/fpm/conf.d"
+    - "{{ php_path }}/fpm/pool.d"
+
+- name: Edit PHP FPM ini
+  ansible.builtin.lineinfile:
+    path: "{{ build_dir }}/sapi/fpm/php-fpm.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: '^;pid = run/php-fpm.pid'
+      line: pid = {{ php_fpm_pid }}
+    - regexp: '^;error_log = log/php-fpm.log'
+      line: error_log = /var/log/php{{ php_sufix }}-fpm.log
+    - regexp: '^;include=etc/php-fpm.d/*.conf'
+      line: include={{ php_path }}/fpm/pool.d/*.conf
+    - regexp: '^;listen ='
+      line: listen = {{ php_fpm_sock }}
+    - regexp: '^;listen.owner ='
+      line: listen.owner = {{ user }}
+    - regexp: '^;listen.group ='
+      line: listen.group = {{ user }}
+
+- name: Copy PHP CLI ini
+  ansible.builtin.copy:
+    src: "{{ build_dir }}/sapi/fpm/php-fpm.conf"
+    dest: "{{ php_path }}/fpm/php-fpm.conf"
+    remote_src: true
+    mode: '0755'
+
+- name: Edit PHP FPM ini
+  ansible.builtin.lineinfile:
+    path: "{{ build_dir }}/sapi/fpm/www.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: '^;listen ='
+      line: listen = {{ php_fpm_sock }}
+    - regexp: '^;listen.owner ='
+      line: listen.owner = {{ user }}
+    - regexp: '^;listen.group ='
+      line: listen.group = {{ user }}
+
+- name: Copy PHP CLI ini
+  ansible.builtin.copy:
+    src: "{{ build_dir }}/sapi/fpm/www.conf"
+    dest: "{{ php_path }}/fpm/pool.d/www.conf"
+    remote_src: true
+    mode: '0755'
+
+- name: Edit PHP FPM ini
+  ansible.builtin.lineinfile:
+    path: "{{ build_dir }}/sapi/fpm/php-fpm.service"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: '^PIDFile='
+      line: listen = {{ php_fpm_pid }}
+    - regexp: '^ExecStart='
+      line: ExecStart=/usr/sbin/php{{ php_sufix }}-fpm
+
+- name: Copy PHP CLI ini
+  notify: Restart PHP-FPM
+  ansible.builtin.copy:
+    src: "{{ build_dir }}/sapi/fpm/php-fpm.service"
+    dest: /usr/lib/systemd/system/php{{ php_sufix }}-fpm.service
+    remote_src: true
+    mode: '0755'

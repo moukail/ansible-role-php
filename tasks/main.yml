@@ -1,0 +1,93 @@
+---
+- ansible.builtin.include_tasks: redhat.yml
+  when: ansible_facts['os_family'] | lower == 'redhat'
+- ansible.builtin.include_tasks: debian.yml
+  when: ansible_facts['os_family'] | lower == 'debian'
+
+- name: Add the user "{{ user }}"
+  ansible.builtin.user:
+    name: "{{ user }}"
+    create_home: false
+    system: true
+    state: present
+
+- name: Create temporary build directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: build
+  register: tmp_dir
+
+- name: Downloading PHP {{ php_version }}
+  ansible.builtin.get_url:
+    url: "{{ download_url }}"
+    dest: "{{ tmp_dir.path }}/php-{{ php_version }}.tar.gz"
+  register: php_source
+
+- name: Unpacking PHP
+  ansible.builtin.unarchive:
+    copy: false
+    dest: "{{ tmp_dir.path }}"
+    src: "{{ php_source.dest }}"
+
+- name: Set build_dir
+  ansible.builtin.set_fact:
+    build_dir: "{{ tmp_dir.path }}/php-{{ php_version }}"
+    php_sufix: "{{ php_version.split('.')[0] }}.{{ php_version.split('.')[1] }}"
+
+- name: Set php_path
+  ansible.builtin.set_fact:
+    php_path: "/etc/php/{{ php_sufix }}"
+
+- name: Edit php.ini-production
+  ansible.builtin.lineinfile:
+    path: "{{ build_dir }}/php.ini-production"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: '^;date.timezone ='
+      line: date.timezone = Europe/Amsterdam
+    - regexp: '^memory_limit ='
+      line: memory_limit = -1
+    - regexp: '^pdo_mysql.default_socket='
+      line: pdo_mysql.default_socket = /var/run/mysqld/mysqld.sock
+
+- name: Get current php cli version
+  ansible.builtin.shell: php{{ php_sufix }} -v | awk '{print $2}' | head -n1
+  register: current_cli_version
+  changed_when: false
+
+- name: Get current php fpm version
+  ansible.builtin.shell: php{{ php_sufix }}-fpm -v | awk '{print $2}' | head -n1
+  register: current_fpm_version
+  changed_when: false
+
+- name: Check if php is already installed
+  ansible.builtin.debug:
+    msg:
+      - Current PHP CLI version is {{ current_cli_version.stdout }}
+      - Current PHP FPM version is {{ current_fpm_version.stdout }}
+
+- name: Compile PHP CLI from source code
+  ansible.builtin.include_tasks: install_cli.yml
+  when: current_cli_version.stdout != php_version
+
+- name: Compile PHP FPM from source code
+  ansible.builtin.include_tasks: install_fpm.yml
+  when: current_fpm_version.stdout != php_version
+
+- name: Remove php dir
+  ansible.builtin.file:
+    path: "{{ build_dir }}"
+    state: absent
+
+- name: Creating opcache file for fpm
+  ansible.builtin.copy:
+    src: opcache.ini
+    dest: "{{ item }}"
+  loop:
+    - "{{ php_path }}/cli/conf.d/opcache.ini"
+    - "{{ php_path }}/fpm/conf.d/opcache.ini"
+  when: php_version is version('8.5', '<')
+
+#- include: ./redis.yml
+#- include: ./amqp.yml

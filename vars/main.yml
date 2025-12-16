@@ -1,0 +1,6 @@
+---
+download_url: "http://nl1.php.net/distributions/php-{{ php_version }}.tar.gz"
+php_custom_modules: >
+  --prefix=/usr --with-curl --with-zip --with-zlib --with-openssl
+  --with-sodium --with-pdo-mysql=mysqlnd --enable-gd --enable-mbstring
+  --enable-soap --enable-sockets

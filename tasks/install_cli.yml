@@ -1,0 +1,49 @@
+---
+- name: Configure PHP CLI source with custom modules
+  ansible.builtin.command: >
+    ./configure
+    --sysconfdir={{ php_path }}/cli
+    --with-config-file-path={{ php_path }}/cli
+    --with-config-file-scan-dir={{ php_path }}/cli/conf.d
+    --disable-cgi
+    --enable-cli
+    {{ php_custom_modules }}
+  args:
+    chdir: "{{ build_dir }}"
+    creates: "{{ build_dir }}/Makefile"
+
+- name: Build PHP CLI {{ php_version }}
+  ansible.builtin.shell: make -j$(nproc)
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: Install PHP CLI {{ php_version }}
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: Make copy of php file
+  ansible.builtin.copy:
+    src: /usr/bin/php
+    dest: /usr/bin/php{{ php_sufix }}
+    remote_src: true
+    mode: '0555'
+
+- name: Make php symlink
+  ansible.builtin.file:
+    src: /usr/bin/php{{ php_sufix }}
+    dest: /usr/bin/php
+    force: true
+    state: link
+
+- name: Create conf directory
+  ansible.builtin.file:
+    path: "{{ php_path }}/cli/conf.d"
+    state: directory
+
+- name: Copy PHP CLI ini
+  ansible.builtin.copy:
+    src: "{{ build_dir }}/php.ini-production"
+    dest: "{{ php_path }}/cli/php.ini"
+    remote_src: true
+    mode: '0755'
