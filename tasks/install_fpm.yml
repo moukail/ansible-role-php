@@ -58,7 +58,6 @@
   loop:
     - "/var/run/php"
     - "{{ php_path }}/fpm/conf.d"
-    - "{{ php_path }}/fpm/pool.d"
 
 - name: Edit PHP FPM ini
   ansible.builtin.lineinfile:
@@ -70,8 +69,6 @@
       line: pid = {{ php_fpm_pid }}
     - regexp: '^;error_log = log/php-fpm.log'
       line: error_log = /var/log/php{{ php_sufix }}-fpm.log
-    #- regexp: '^;include=etc/php-fpm.d/*.conf'
-    #  line: include={{ php_path }}/fpm/pool.d/*.conf
 
 - name: Copy PHP CLI ini
   ansible.builtin.copy:
