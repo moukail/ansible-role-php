@@ -88,10 +88,14 @@
   loop:
     - regexp: '^listen ='
       line: listen = {{ php_fpm_sock }}
-    #- regexp: '^;listen.owner ='
-    #  line: listen.owner = {{ user }}
-    #- regexp: '^;listen.group ='
-    #  line: listen.group = {{ user }}
+    - regexp: '^user ='
+      line: user = {{ user }}
+    - regexp: '^group ='
+      line: group = {{ user }}  
+    - regexp: '^;listen.owner ='
+      line: listen.owner = {{ user }}
+    - regexp: '^;listen.group ='
+      line: listen.group = {{ user }}
 
 - name: Copy PHP CLI ini
   ansible.builtin.copy:
