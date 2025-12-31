@@ -70,14 +70,8 @@
       line: pid = {{ php_fpm_pid }}
     - regexp: '^;error_log = log/php-fpm.log'
       line: error_log = /var/log/php{{ php_sufix }}-fpm.log
-    - regexp: '^;include=etc/php-fpm.d/*.conf'
-      line: include={{ php_path }}/fpm/pool.d/*.conf
-    - regexp: '^;listen ='
-      line: listen = {{ php_fpm_sock }}
-    - regexp: '^;listen.owner ='
-      line: listen.owner = {{ user }}
-    - regexp: '^;listen.group ='
-      line: listen.group = {{ user }}
+    #- regexp: '^;include=etc/php-fpm.d/*.conf'
+    #  line: include={{ php_path }}/fpm/pool.d/*.conf
 
 - name: Copy PHP CLI ini
   ansible.builtin.copy:
@@ -92,17 +86,17 @@
     regexp: "{{ item.regexp }}"
     line: "{{ item.line }}"
   loop:
-    - regexp: '^;listen ='
+    - regexp: '^listen ='
       line: listen = {{ php_fpm_sock }}
-    - regexp: '^;listen.owner ='
-      line: listen.owner = {{ user }}
-    - regexp: '^;listen.group ='
-      line: listen.group = {{ user }}
+    #- regexp: '^;listen.owner ='
+    #  line: listen.owner = {{ user }}
+    #- regexp: '^;listen.group ='
+    #  line: listen.group = {{ user }}
 
 - name: Copy PHP CLI ini
   ansible.builtin.copy:
     src: "{{ build_dir }}/sapi/fpm/www.conf"
-    dest: "{{ php_path }}/fpm/pool.d/www.conf"
+    dest: "{{ php_path }}/fpm/php-fpm.d/www.conf"
     remote_src: true
     mode: '0755'
 
