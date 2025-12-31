@@ -107,7 +107,7 @@
     line: "{{ item.line }}"
   loop:
     - regexp: '^PIDFile='
-      line: listen = {{ php_fpm_pid }}
+      line: PIDFile={{ php_fpm_pid }}
     - regexp: '^ExecStart='
       line: ExecStart=/usr/sbin/php{{ php_sufix }}-fpm
 
