@@ -52,12 +52,9 @@
 
 - name: Create dirs
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ php_path }}/fpm/conf.d"
     state: directory
     recurse: true
-  loop:
-    - "/var/run/php"
-    - "{{ php_path }}/fpm/conf.d"
 
 - name: Edit PHP FPM ini
   ansible.builtin.lineinfile:
