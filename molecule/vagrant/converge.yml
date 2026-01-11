@@ -9,6 +9,8 @@
     - name: Apply php role
       ansible.builtin.include_role:
         name: ansible-role-php
+      vars:  
+        php_version: 8.4.16
     
     - name: Show message
       ansible.builtin.debug:

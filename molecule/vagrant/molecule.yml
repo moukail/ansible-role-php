@@ -13,7 +13,7 @@ platforms:
   #  provider_options:
   #    video_type: 'vga'
   - name: stream9
-    box: centos/stream9
+    box: generic/centos9s
     cpus: 1
     memory: 1024
     provider_options:
@@ -22,8 +22,8 @@ platforms:
 dependency:
   name: galaxy
   options:
-    #role-file: requirements.yml
-    #requirements-file: requirements.yml
+    #role-file: ${MOLECULE_SCENARIO_DIRECTORY}/requirements.yml
+    #requirements-file: ${MOLECULE_SCENARIO_DIRECTORY}/requirements.yml
     ignore-errors: true
     force: false
 
@@ -47,14 +47,14 @@ ansible:
     ANSIBLE_FORCE_COLOR: "1"
     ANSIBLE_LOAD_CALLBACK_PLUGINS: "1"
 
-#scenario:
+scenario:
 #  name: vagrant
-#  test_sequence:
-#    - dependency
-#    - create
+  test_sequence:
+    - dependency
+    - create
 #    - prepare
-#    - converge
-#    - idempotence
+    - converge
+    - idempotence
 #    - verify
 #    - cleanup
-#    - destroy
+    - destroy
